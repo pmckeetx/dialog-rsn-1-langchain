@@ -75,7 +75,7 @@ class VoiceAgent:
         updated = json.loads(await self.ws.recv())
         if updated["type"] != "session.updated":
             # A refused update applies nothing, so the agent would run with no prompt and no tools.
-            raise RuntimeError(updated["error"]["message"])
+            raise RuntimeError(updated.get("error", {}).get("message", f"unexpected {updated['type']}"))
 
     async def invoke(self, call: dict) -> str:
         tool = self.tools.get(call["name"])
