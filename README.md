@@ -2,7 +2,7 @@
 
 Ivy answers the phone at Fernbrook Garden Centre, a fictional garden shop. You talk to her through your
 microphone. PolyAI's [Dialog-RSN-1](https://docs.poly.ai/dialog-rsn-1) hears you, decides when you've
-finished, and speaks the reply. LangChain supplies the tools Ivy calls, plus a LangChain agent (the "head
+finished and writes the reply, and the API voices it with server-side text-to-speech. LangChain supplies the tools Ivy calls, plus a LangChain agent (the "head
 gardener") she asks when a question needs real advice.
 
 Write-up: [How to build a voice agent using LangChain and PolyAI's realtime voice model](https://www.petermckee.dev/blog/build-a-voice-agent-using-langchain-and-polyai)

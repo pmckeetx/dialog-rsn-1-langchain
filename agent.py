@@ -1,4 +1,4 @@
-"""Ivy, the voice assistant at Fernbrook Garden Centre: Dialog-RSN-1 hears and speaks, LangChain runs the tools."""
+"""Ivy, the voice assistant at Fernbrook Garden Centre: Dialog-RSN-1 hears and replies, the API voices it, LangChain runs the tools."""
 import argparse
 import asyncio
 import base64
