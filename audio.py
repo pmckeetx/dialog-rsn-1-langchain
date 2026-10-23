@@ -1,4 +1,4 @@
-"""Microphone and speaker for the terminal, at one sample rate: 16-bit mono PCM, the format Dialog-RSN-1 uses."""
+"""Microphone and speaker for the terminal, at one sample rate: 16-bit mono PCM, the format the realtime API takes in and sends back."""
 import asyncio
 import threading
 

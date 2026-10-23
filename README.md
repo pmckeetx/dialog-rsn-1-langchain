@@ -1,6 +1,6 @@
 # Voice agent with LangChain and Dialog-RSN-1
 
-Ivy answers the phone at Fernbrook Garden Centre, a fictional garden shop. You talk to her through your
+Ivy is the voice assistant at Fernbrook Garden Centre, a fictional garden shop. You talk to her through your
 microphone. PolyAI's [Dialog-RSN-1](https://docs.poly.ai/dialog-rsn-1) hears you, decides when you've
 finished and writes the reply, and the API voices it with server-side text-to-speech. LangChain supplies the tools Ivy calls, plus a LangChain agent (the "head
 gardener") she asks when a question needs real advice.
