@@ -69,6 +69,21 @@ async def test_the_gardener_gets_one_thread_per_voice_session(monkeypatch):
     assert "Water it less." in ivy.transcript[-1][1]
 
 
+async def test_a_gardener_that_fails_fast_still_waits_for_the_hold_line(monkeypatch):
+    class BrokenGardener:
+        async def ainvoke(self, state, config):
+            raise RuntimeError("no API key")
+
+    monkeypatch.setattr(expert, "gardener", BrokenGardener())
+    async with FakeRealtime(tool_name="ask_gardener", tool_args={"question": "Why is my lavender yellow?"}) as server:
+        monkeypatch.setattr(agent, "URL", server.url)
+        ivy = await agent.ask("Why is my lavender yellow?")
+
+    # The answer waits until the hold line has finished, so the server never refuses it.
+    assert server.errors == []
+    assert "Error: no API key" in ivy.transcript[-1][1]
+
+
 async def test_a_refused_session_update_stops_the_agent(monkeypatch):
     async with FakeRealtime(refuse_update=True) as server:
         monkeypatch.setattr(agent, "URL", server.url)

@@ -57,11 +57,14 @@ class VoiceAgent:
         self.config = {"configurable": {"thread_id": "voice"}}  # LangChain config; the thread is set in start()
         self.tool_tasks: set[asyncio.Task] = set()
         self.transcript: list[tuple[str, str]] = []
-        self.idle = asyncio.Event()  # Set while no response is in progress.
+        self.active: set[str] = set()  # ids of responses in progress
+        self.requested = 0  # response.create sent, response.created not seen yet
+        self.idle = asyncio.Event()  # set when both are empty
         self.idle.set()
 
     async def send(self, event: dict):
         if event["type"] == "response.create":
+            self.requested += 1
             self.idle.clear()
         await self.ws.send(json.dumps(event))
 
@@ -84,6 +87,13 @@ class VoiceAgent:
             result = f"Error: {e}"
         return result if isinstance(result, str) else json.dumps(result)
 
+    async def reply(self, call: dict, output: str):
+        await self.send({
+            "type": "conversation.item.create",
+            "item": {"type": "function_call_output", "call_id": call["call_id"], "output": output},
+        })
+        await self.send({"type": "response.create"})
+
     async def run_tool(self, call: dict):
         if call["name"] not in SLOW_TOOLS:
             await self.reply(call, await self.invoke(call))
@@ -99,13 +109,6 @@ class VoiceAgent:
                 "role": "system",
                 "content": [{"type": "input_text", "text": f"The head gardener says: {answer} Pass this on to the caller now."}],
             },
-        })
-        await self.send({"type": "response.create"})
-
-    async def reply(self, call: dict, output: str):
-        await self.send({
-            "type": "conversation.item.create",
-            "item": {"type": "function_call_output", "call_id": call["call_id"], "output": output},
         })
         await self.send({"type": "response.create"})
 
@@ -125,11 +128,21 @@ class VoiceAgent:
                 self.tool_tasks.add(task)
                 task.add_done_callback(self.tool_tasks.discard)
             case "response.created":
+                self.requested = max(0, self.requested - 1)
+                self.active.add(event["response"]["id"])
                 self.idle.clear()
             case "response.done":
-                self.idle.set()
+                self.active.discard(event["response"]["id"])
+                self.update_idle()
             case "error":
+                if event["error"].get("code") == "conversation_already_has_active_response":
+                    self.requested = max(0, self.requested - 1)  # That response.create was refused.
+                    self.update_idle()
                 self.say("Error", event["error"]["message"])
+
+    def update_idle(self):
+        if not self.active and not self.requested:
+            self.idle.set()
 
     def say(self, who: str, text: str):
         self.transcript.append((who, text))
