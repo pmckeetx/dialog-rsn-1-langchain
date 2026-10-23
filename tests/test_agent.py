@@ -53,34 +53,33 @@ async def test_the_gardener_gets_one_thread_per_voice_session(monkeypatch):
             return {"messages": [AIMessage("Water it less.")]}
 
     monkeypatch.setattr(expert, "gardener", FakeGardener())
-    async with FakeRealtime(tool_name="ask_gardener", tool_args={"question": "Why is my lavender yellow?"}) as server:
+    args = {"question": "Why is my lavender yellow?", "say_while_waiting": "Let me ask our head gardener."}
+    async with FakeRealtime(tool_name="ask_gardener", tool_args=args) as server:
         monkeypatch.setattr(agent, "URL", server.url)
         ivy = await agent.ask("Why is my lavender yellow?")
 
+    # The spoken line never reaches the LangChain tool; the gardener sees only the question, on the call's thread.
     assert seen == {"question": "Why is my lavender yellow?", "thread_id": "conversation_test"}
-
-    # The tool call is answered at once with a hold line, and the gardener's answer follows as a system message.
-    items = [e["item"] for e in server.sent("conversation.item.create")]
-    [call_output] = [i for i in items if i["type"] == "function_call_output"]
-    assert "checking" in call_output["output"]
-    [system] = [i for i in items if i.get("role") == "system"]
-    assert "Water it less." in system["content"][0]["text"]
-    assert len(server.sent("response.create")) == 3  # the question, the hold line, the answer
+    [call_output] = [e["item"] for e in server.sent("conversation.item.create") if e["item"]["type"] == "function_call_output"]
+    assert call_output["output"] == "Water it less."
+    # Ivy says the poly_spoken line while the tool runs, then the answer.
+    assert server.spoken == ["Let me ask our head gardener.", "From the tool: Water it less."]
     assert "Water it less." in ivy.transcript[-1][1]
 
 
-async def test_a_gardener_that_fails_fast_still_waits_for_the_hold_line(monkeypatch):
+async def test_a_gardener_that_fails_fast_still_gets_an_answer_spoken(monkeypatch):
     class BrokenGardener:
         async def ainvoke(self, state, config):
             raise RuntimeError("no API key")
 
     monkeypatch.setattr(expert, "gardener", BrokenGardener())
-    async with FakeRealtime(tool_name="ask_gardener", tool_args={"question": "Why is my lavender yellow?"}) as server:
+    args = {"question": "Why is my lavender yellow?", "say_while_waiting": "Let me ask our head gardener."}
+    async with FakeRealtime(tool_name="ask_gardener", tool_args=args) as server:
         monkeypatch.setattr(agent, "URL", server.url)
         ivy = await agent.ask("Why is my lavender yellow?")
 
-    # The answer waits until the hold line has finished, so the server never refuses it.
-    assert server.errors == []
+    # The tool fails before the spoken line has finished. ask() must not mistake that line for the answer.
+    assert server.spoken[0] == "Let me ask our head gardener."
     assert "Error: no API key" in ivy.transcript[-1][1]
 
 

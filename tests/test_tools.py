@@ -36,7 +36,14 @@ def test_realtime_tool_is_flat_with_arg_descriptions():
 
 
 def test_injected_config_stays_out_of_the_schema():
-    assert list(realtime_tool(ask_gardener)["parameters"]["properties"]) == ["question"]
+    assert "config" not in realtime_tool(ask_gardener)["parameters"]["properties"]
+
+
+def test_slow_tools_get_a_spoken_line_and_fast_ones_dont():
+    gardener = realtime_tool(ask_gardener)["parameters"]
+    assert gardener["properties"]["say_while_waiting"]["poly_spoken"] is True
+    assert "say_while_waiting" in gardener["required"]
+    assert "say_while_waiting" not in realtime_tool(check_stock)["parameters"]["properties"]
 
 
 def test_session_update_sends_every_tool_and_the_input_format():
